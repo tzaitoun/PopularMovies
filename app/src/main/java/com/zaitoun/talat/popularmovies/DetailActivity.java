@@ -103,33 +103,8 @@ public class DetailActivity extends AppCompatActivity {
                 final String value = sharedPreferences.getString(context.getResources().getString(R.string.pref_movie_key),
                         context.getResources().getString(R.string.pref_movie_popularity_value));
 
-                /* If our data comes from the SQLite database, then this means the movie is bookmarked */
-                if (value.equals(context.getResources().getString(R.string.pref_movie_bookmarked_value))) {
-                    mBookmark.setImageResource(R.mipmap.ic_bookmark_black_24dp);
-                    mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
-                    mBookmarkedMovie = true;
-                }
-
-                /* If our data is from TMDB, we need to check if its bookmarked */
-                else {
-                    Cursor cursor = queryForMovie(movie);
-
-                    if (cursor != null) {
-                        try {
-                            if (cursor.getCount() == 1) {
-                                mBookmark.setImageResource(R.mipmap.ic_bookmark_black_24dp);
-                                mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
-                                mBookmarkedMovie = true;
-                            }
-
-                            else {
-                                mBookmarkedMovie = false;
-                            }
-                        } finally {
-                            cursor.close();
-                        }
-                    }
-                }
+                /* Check if movie is bookmarked and update UI */
+                checkBookmarked(context, movie);
 
                 /* When online, load the movie details (trailer, reviews, backdrop picture) */
                 if (isOnline()) {
@@ -328,6 +303,28 @@ public class DetailActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    /* Checks if the movie is bookmarked */
+    public void checkBookmarked(Context context, Movie movie) {
+
+        Cursor cursor = queryForMovie(movie);
+
+        if (cursor != null) {
+            try {
+                if (cursor.getCount() == 1) {
+                    mBookmark.setImageResource(R.mipmap.ic_bookmark_black_24dp);
+                    mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
+                    mBookmarkedMovie = true;
+                }
+
+                else {
+                    mBookmarkedMovie = false;
+                }
+            } finally {
+                cursor.close();
+            }
         }
     }
 }
