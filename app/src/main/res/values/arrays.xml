@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    <array name="pref_movie_option_label">
+        <item>@string/pref_movie_label_popularity</item>
+        <item>@string/pref_movie_label_top_rated</item>
+        <item>@string/pref_movie_label_bookmarked</item>
+    </array>
+
+    <array name="pref_movie_option_values">
+        <item>@string/pref_movie_popularity_value</item>
+        <item>@string/pref_movie_top_rated_value</item>
+        <item>@string/pref_movie_bookmarked_value</item>
+    </array>
+
+</resources>
