@@ -51,8 +51,21 @@ public class DetailActivity extends AppCompatActivity {
     private ImageView mBorderTwo;
     private TextView mTrailerTitle;
 
+    /* This is the poster that we store on the device, we store it in this variable when we have
+     * access to the internet.
+     */
     private Bitmap mPosterBitmap;
+
+    /* This variable stores whether the movie is bookmarked or not, we query the database to figure
+     * out if the movie is bookmarked. This variable can change when the user interacts with the
+     * bookmark icon.
+     */
     private boolean mBookmarkedMovie;
+
+    /* We store local poster path so we can delete it, if the user unbookmarks from outside the
+     * bookmarks page.
+     */
+    private String mLocalPosterPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,16 +108,6 @@ public class DetailActivity extends AppCompatActivity {
                 mOverview.setText(movie.OVERVIEW);
                 mRating.setText(movie.VOTE_AVERAGE + "/10");
                 mReleaseDate.setText(formatDate(movie.RELEASE_DATE));
-
-                /* This is to check if the movie is bookmarked */
-                final Context context = getApplicationContext();
-
-                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-                final String value = sharedPreferences.getString(context.getResources().getString(R.string.pref_movie_key),
-                        context.getResources().getString(R.string.pref_movie_popularity_value));
-
-                /* Check if movie is bookmarked and update UI */
-                checkBookmarked(context, movie);
 
                 /* When online, load the movie details (trailer, reviews, backdrop picture) */
                 if (isOnline()) {
@@ -157,60 +160,55 @@ public class DetailActivity extends AppCompatActivity {
                     mTrailerTitle.setVisibility(View.GONE);
                 }
 
+                final Context context = getApplicationContext();
+
+                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+                final String value = sharedPreferences.getString(context.getResources().getString(R.string.pref_movie_key),
+                        context.getResources().getString(R.string.pref_movie_popularity_value));
+
+                /* Initialize the bookmark icon */
+
+                /* If the user came from the bookmarked movies, then the movie is bookmarked */
+                if (value.equals(context.getResources().getString(R.string.pref_movie_bookmarked_value))) {
+                    mBookmark.setImageResource(R.mipmap.ic_bookmark_black_24dp);
+                    mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
+                    mBookmarkedMovie = true;
+                }
+
+                /* The user came from the popular/top rated movies, so we have to check if it is bookmarked */
+                else {
+                    /* Check if movie is bookmarked and update UI, if it is retrieve the local poster path */
+                    mLocalPosterPath = checkBookmarked(context, movie);
+                }
+
                 mBookmark.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
 
-                        /* If you click on it when its bookmarked, it means the user wants to unbookmark
-                         * You can only unbookmark when viewing your bookmarks.
-                         */
-                        if (mBookmarkedMovie) {
+                        /* If the user came from the bookmarks section */
+                        if (value.equals(context.getResources().getString(R.string.pref_movie_bookmarked_value))) {
 
-                            /* The user should only be able to unbookmark from my bookmarks */
-                            if (!value.equals(context.getResources().getString(R.string.pref_movie_bookmarked_value))) {
-                                Toast.makeText(getApplicationContext(), getString(R.string.unbookmark_from_bookmarks), Toast.LENGTH_LONG)
+                            /* If you click on it when its bookmarked, it means the user wants to unbookmark */
+                            if (mBookmarkedMovie) {
+                                unbookmarkMovie(context, movie, movie.LOCAL_POSTER_PATH);
+
+                                /* Exit activity */
+                                finish();
+
+                            } else {
+                                Toast.makeText(context, getString(R.string.bookmark_from_bookmarks_not_allowed), Toast.LENGTH_LONG)
                                         .show();
-                            }
-
-                            /* Try to delete the image from memory, if successful, delete it from the database */
-                            else {
-                                boolean deleted = PopularMoviesImageInternalStorage.deleteFromInternalStorage(movie.LOCAL_POSTER_PATH);
-
-                                if (deleted) {
-                                    deleteMovieFromDatabase(movie);
-
-                                    mBookmarkedMovie = false;
-                                    mBookmark.setImageResource(R.mipmap.ic_bookmark_border_black_24dp);
-                                    mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
-                                    Toast.makeText(getApplicationContext(), getString(R.string.unbookmark), Toast.LENGTH_LONG)
-                                            .show();
-                                } else {
-                                    Toast.makeText(getApplicationContext(), getString(R.string.failed_unbookmark), Toast.LENGTH_LONG)
-                                            .show();
-                                }
                             }
                         }
 
-                        /* If you click on it when its not bookmarked, it means the user wants to bookmark */
+                        /* If the user came from the popular movies or top rated section */
                         else {
 
-                            /* You can't bookmark from my bookmarks */
-                            if (value.equals(context.getResources().getString(R.string.pref_movie_bookmarked_value))) {
-                                Toast.makeText(getApplicationContext(), getString(R.string.bookmark_from_bookmarks_not_allowed), Toast.LENGTH_LONG)
-                                        .show();
-                            }
-
-                            else {
-                                String local_poster_path = PopularMoviesImageInternalStorage
-                                        .saveToInternalStorage(getApplicationContext(), mPosterBitmap, movie.MOVIE_ID);
-
-                                insertMovieIntoDatabase(movie, local_poster_path);
-
-                                mBookmarkedMovie = true;
-                                mBookmark.setImageResource(R.mipmap.ic_bookmark_black_24dp);
-                                mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
-                                Toast.makeText(getApplicationContext(), getString(R.string.bookmark), Toast.LENGTH_LONG)
-                                        .show();
+                            /* If you click on it when its bookmarked, it means the user wants to unbookmark */
+                            if (mBookmarkedMovie) {
+                                unbookmarkMovie(context, movie, mLocalPosterPath);
+                            } else {
+                                bookmarkMovie(context, movie);
                             }
                         }
                     }
@@ -229,7 +227,9 @@ public class DetailActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    /* Plays the trailer of a movie */
+    /**
+     * Plays the trailer of a movie
+     */
     private void playTrailer() {
 
         /* Check if there is a valid tag */
@@ -245,6 +245,12 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Formats the date to user-friendly format.
+     *
+     * @param date The date that will be formatted.
+     * @return A String with our reformatted date.
+     */
     private String formatDate(String date) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
         Date releaseDate = null;
@@ -270,7 +276,12 @@ public class DetailActivity extends AppCompatActivity {
         return netInfo != null && netInfo.isConnectedOrConnecting();
     }
 
-    /* Creates a Content Values and stores movie information in it, to insert it into the database */
+    /**
+     * Creates a Content Values and stores movie information in it, to insert it into the database.
+     *
+     * @param movie The movie we wish to query.
+     * @param local_poster_path The path where the poster was saved on the device.
+     */
     public void insertMovieIntoDatabase(Movie movie, String local_poster_path) {
 
         ContentValues contentValues = new ContentValues();
@@ -285,7 +296,11 @@ public class DetailActivity extends AppCompatActivity {
         getContentResolver().insert(BookmarkedMoviesEntry.CONTENT_URI, contentValues);
     }
 
-    /* Delete the movie entry from the database */
+    /**
+     * Delete the movie entry from the database
+     *
+     * @param movie The movie we wish to delete.
+     */
     public void deleteMovieFromDatabase(Movie movie) {
 
         Uri deleteUri = BookmarkedMoviesEntry.CONTENT_URI.buildUpon().appendPath(movie.MOVIE_ID).build();
@@ -293,7 +308,12 @@ public class DetailActivity extends AppCompatActivity {
         getContentResolver().delete(deleteUri, null, null);
     }
 
-    /* Queries for a movie, to check if it exists */
+    /**
+     * Queries for a movie, to check if it exists
+     *
+     * @param movie The movie we wish to query.
+     * @return A cursor with our query data. Null if an error occurs.
+     */
     public Cursor queryForMovie(Movie movie) {
 
         Uri queryUri = BookmarkedMoviesEntry.CONTENT_URI.buildUpon().appendPath(movie.MOVIE_ID).build();
@@ -306,25 +326,82 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
-    /* Checks if the movie is bookmarked */
-    public void checkBookmarked(Context context, Movie movie) {
+    /**
+     * Checks if the movie is bookmarked (by querying database) and returns local poster path if it is.
+     *
+     * @param movie The movie we wish to query.
+     * @return The local poster path. Null: if the movie is not bookmarked or the cursor is invalid.
+     */
+    public String checkBookmarked(Context context, Movie movie) {
 
         Cursor cursor = queryForMovie(movie);
 
         if (cursor != null) {
+
+            final int LOCAL_POSTER_PATH_COLUMN = cursor.getColumnIndex(BookmarkedMoviesEntry.COLUMN_MOVIE_POSTER_PATH);
+
             try {
-                if (cursor.getCount() == 1) {
+                /* If the movie is in the database, it is bookmarked */
+                if (cursor.getCount() == 1 && cursor.moveToFirst()) {
                     mBookmark.setImageResource(R.mipmap.ic_bookmark_black_24dp);
                     mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
                     mBookmarkedMovie = true;
+                    return cursor.getString(LOCAL_POSTER_PATH_COLUMN);
                 }
 
+                /* If it's not bookmarked */
                 else {
+                    /* Bookmark icon is unbookmarked by default */
                     mBookmarkedMovie = false;
+                    return null;
                 }
             } finally {
                 cursor.close();
             }
         }
+
+        return null;
+    }
+
+    /**
+     * Unbookmarks movie: deletes poster image off device, off database, and updates UI.
+     */
+    public void unbookmarkMovie(Context context, Movie movie, String localPosterPath) {
+
+        boolean deleted = PopularMoviesImageInternalStorage.deleteFromInternalStorage(localPosterPath);
+
+        /* If the image was successfully deleted, delete it from the database */
+        if (deleted) {
+            deleteMovieFromDatabase(movie);
+
+            mBookmarkedMovie = false;
+            mBookmark.setImageResource(R.mipmap.ic_bookmark_border_black_24dp);
+            mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
+            Toast.makeText(context, getString(R.string.unbookmark), Toast.LENGTH_LONG)
+                    .show();
+        } else {
+            Toast.makeText(context, getString(R.string.failed_unbookmark), Toast.LENGTH_LONG)
+                    .show();
+        }
+    }
+
+    /**
+     * Bookmarks movie: saves poster image on device, file path on database, and updates UI.
+     */
+    public void bookmarkMovie(Context context, Movie movie) {
+
+        String local_poster_path = PopularMoviesImageInternalStorage
+                .saveToInternalStorage(context, mPosterBitmap, movie.MOVIE_ID);
+
+        /* Copy the path */
+        mLocalPosterPath = local_poster_path;
+
+        insertMovieIntoDatabase(movie, local_poster_path);
+
+        mBookmarkedMovie = true;
+        mBookmark.setImageResource(R.mipmap.ic_bookmark_black_24dp);
+        mBookmark.setColorFilter(ContextCompat.getColor(context, R.color.colorAccent));
+        Toast.makeText(context, getString(R.string.bookmark), Toast.LENGTH_LONG)
+                .show();
     }
 }

@@ -76,6 +76,20 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        String value = sharedPreferences.getString(getResources().getString(R.string.pref_movie_key),
+                getResources().getString(R.string.pref_movie_popularity_value));
+
+        /* When coming back from the bookmarks section, always reload the data */
+        if (value.equals(this.getResources().getString(R.string.pref_movie_bookmarked_value))) {
+            moviesToDisplayChangeInData(value);
+        }
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater menuInflater = getMenuInflater();
         menuInflater.inflate(R.menu.menu_main, menu);
@@ -201,7 +215,6 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
             moviesToDisplayChangeInData(value);
         }
-
     }
 
     /* This is used for when the data changes and the loader needs to be restarted */
