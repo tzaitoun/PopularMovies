@@ -19,6 +19,7 @@ import android.support.v7.preference.PreferenceManager;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -50,6 +51,7 @@ public class DetailActivity extends AppCompatActivity {
     private ImageView mBorderOne;
     private ImageView mBorderTwo;
     private TextView mTrailerTitle;
+    private ScrollView mScrollView;
 
     /* This is the poster that we store on the device, we store it in this variable when we have
      * access to the internet.
@@ -66,6 +68,8 @@ public class DetailActivity extends AppCompatActivity {
      * bookmarks page.
      */
     private String mLocalPosterPath;
+
+    private static final String SCROLL_POSITION = "scroll_position";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +96,7 @@ public class DetailActivity extends AppCompatActivity {
         mBorderOne = (ImageView) findViewById(R.id.iv_border_trailer);
         mBorderTwo = (ImageView) findViewById(R.id.iv_border_reviews);
         mTrailerTitle = (TextView) findViewById(R.id.tv_trailer);
+        mScrollView = (ScrollView) findViewById(R.id.sv_scroll_view);
 
         Intent intentThatStartedThisActivity = getIntent();
 
@@ -215,6 +220,18 @@ public class DetailActivity extends AppCompatActivity {
                 });
             }
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(SCROLL_POSITION, mScrollView.getScrollY());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        mScrollView.setScrollY(savedInstanceState.getInt(SCROLL_POSITION));
     }
 
     @Override

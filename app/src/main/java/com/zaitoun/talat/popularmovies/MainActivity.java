@@ -40,6 +40,8 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     /* Used to store the sort mode (popular/top rated) in the bundle when initializing/restarting the loader */
     private static final String SORTMODE_BUNDLE_KEY = "sortmode_bundle_key";
 
+    private static final String GRIDVIEW_POSITION = "gridview_position";
+
     private GridView mGridView;
     private MovieAdapter mMovieAdapter;
     private ProgressBar mProgressBar;
@@ -67,6 +69,18 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
         /* Register the listener so that when the user changes the shared preferences, we can update the grid */
         sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(GRIDVIEW_POSITION, mGridView.getFirstVisiblePosition());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        mGridView.setSelection(savedInstanceState.getInt(GRIDVIEW_POSITION));
     }
 
     @Override
