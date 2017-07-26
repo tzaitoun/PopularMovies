@@ -22,4 +22,9 @@ in the API_KEY variable.
 - themoviedb.org 
 - Picasso 
 
+### Application Preview 
+[Movie Grid Selection Screen](https://github.com/tzaitoun/PopularMovies/blob/master/device-2017-07-26-150056.png)
+
+[Movie Detail Screen](https://github.com/tzaitoun/PopularMovies/blob/master/device-2017-07-26-150256.png)
+
 **Special Thanks to Udacity and Udacity Reviewers for providing useful feedback and suggestions on improvements and further learning.**
