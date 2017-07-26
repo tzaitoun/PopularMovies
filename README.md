@@ -21,6 +21,7 @@ in the API_KEY variable.
 
 - themoviedb.org 
 - Picasso 
+- Icons from https://material.io/icons/
 
 ### Application Preview 
 [Movie Grid Selection Screen](https://github.com/tzaitoun/PopularMovies/blob/master/device-2017-07-26-150056.png)
